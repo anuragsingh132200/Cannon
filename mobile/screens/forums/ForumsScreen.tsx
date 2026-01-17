@@ -4,21 +4,25 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { colors, spacing, borderRadius, typography } from '../../theme/dark';
 
 export default function ForumsScreen() {
+    const navigation = useNavigation<any>();
     const [forums, setForums] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadForums();
-    }, []);
+    useFocusEffect(
+        React.useCallback(() => {
+            loadForums();
+        }, [])
+    );
 
     const loadForums = async () => {
         try {
+            setLoading(true);
             const { forums: data } = await api.getForums();
             setForums(data || []);
         } catch (error) {
@@ -38,7 +42,14 @@ export default function ForumsScreen() {
     };
 
     const renderForum = ({ item }: { item: any }) => (
-        <TouchableOpacity style={styles.forumCard}>
+        <TouchableOpacity
+            style={styles.forumCard}
+            onPress={() => navigation.navigate('ForumDetail', {
+                forumId: item.id,
+                forumName: item.name,
+                isAdminOnly: item.is_admin_only
+            })}
+        >
             <View style={styles.forumIcon}>
                 <Ionicons name={getIcon(item.name)} size={24} color={colors.primary} />
             </View>

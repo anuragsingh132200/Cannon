@@ -8,6 +8,7 @@ import { Camera, CameraView } from 'expo-camera';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography } from '../../theme/dark';
 
 const PHOTO_STEPS = [
@@ -18,6 +19,7 @@ const PHOTO_STEPS = [
 
 export default function FaceScanScreen() {
     const navigation = useNavigation<any>();
+    const { isPaid, refreshUser } = useAuth();
     const cameraRef = useRef<CameraView>(null);
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [currentStep, setCurrentStep] = useState<number>(0);
@@ -57,8 +59,14 @@ export default function FaceScanScreen() {
 
             const uploadResult = await api.uploadScanImages(front, left, right);
             await api.analyzeScan(uploadResult.scan_id);
+            await refreshUser();
 
-            navigation.navigate('BlurredResult');
+            // Route based on payment status
+            if (isPaid) {
+                navigation.navigate('FullResult');
+            } else {
+                navigation.navigate('BlurredResult');
+            }
         } catch (error) {
             Alert.alert('Error', 'Failed to upload photos');
         } finally {

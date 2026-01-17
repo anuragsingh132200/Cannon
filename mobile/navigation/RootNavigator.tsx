@@ -15,7 +15,16 @@ import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 import FeaturesIntroScreen from '../screens/onboarding/FeaturesIntroScreen';
 import FaceScanScreen from '../screens/scan/FaceScanScreen';
 import BlurredResultScreen from '../screens/scan/BlurredResultScreen';
+import FullResultScreen from '../screens/scan/FullResultScreen';
+import ScanDetailScreen from '../screens/scan/ScanDetailScreen';
 import PaymentScreen from '../screens/payment/PaymentScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
+import CourseListScreen from '../screens/courses/CourseListScreen';
+import CourseDetailScreen from '../screens/courses/CourseDetailScreen';
+import ChapterViewScreen from '../screens/courses/ChapterViewScreen';
+import ForumDetailScreen from '../screens/forums/ForumDetailScreen';
+import ThreadDetailScreen from '../screens/forums/ThreadDetailScreen';
+import CreateThreadScreen from '../screens/forums/CreateThreadScreen';
 import TabNavigator from './TabNavigator';
 
 const Stack = createNativeStackNavigator();
@@ -46,7 +55,7 @@ export function RootNavigator() {
                     <Stack.Screen name="FeaturesIntro" component={FeaturesIntroScreen} />
                 </>
             ) : !user?.first_scan_completed ? (
-                // First scan flow
+                // First scan flow (not paid yet)
                 <>
                     <Stack.Screen name="FaceScan" component={FaceScanScreen} />
                     <Stack.Screen name="BlurredResult" component={BlurredResultScreen} />
@@ -59,10 +68,23 @@ export function RootNavigator() {
                     <Stack.Screen name="Payment" component={PaymentScreen} />
                 </>
             ) : (
-                // Main app
+                // Main app (paid user)
                 <>
                     <Stack.Screen name="Main" component={TabNavigator} />
                     <Stack.Screen name="FaceScan" component={FaceScanScreen} />
+                    <Stack.Screen name="FullResult" component={FullResultScreen} />
+                    <Stack.Screen name="ScanDetail" component={ScanDetailScreen} />
+                    <Stack.Screen name="Profile" component={ProfileScreen} />
+
+                    {/* Course Screens */}
+                    <Stack.Screen name="CourseList" component={CourseListScreen} />
+                    <Stack.Screen name="CourseDetail" component={CourseDetailScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="ChapterView" component={ChapterViewScreen} options={{ headerShown: false }} />
+
+                    {/* Forum Screens */}
+                    <Stack.Screen name="ForumDetail" component={ForumDetailScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="ThreadDetail" component={ThreadDetailScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="CreateThread" component={CreateThreadScreen} options={{ headerShown: false, presentation: 'modal' }} />
                 </>
             )}
         </Stack.Navigator>
@@ -70,3 +92,4 @@ export function RootNavigator() {
 }
 
 export default RootNavigator;
+

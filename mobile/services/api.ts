@@ -5,7 +5,11 @@
 import axios, { AxiosInstance } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Use your computer's IP address for physical devices or emulators
+// For Android Emulator: http://10.0.2.2:8000/api
+// For iOS Simulator: http://localhost:8000/api  
+// For physical devices (Expo Go): Use your computer's local IP
+const API_BASE_URL = 'http://10.145.91.182:8000/api';
 
 class ApiService {
     private client: AxiosInstance;
@@ -116,6 +120,11 @@ class ApiService {
         return response.data;
     }
 
+    async getScanById(scanId: string) {
+        const response = await this.client.get(`/scans/${scanId}`);
+        return response.data;
+    }
+
     // Payments
     async createCheckoutSession(successUrl: string, cancelUrl: string) {
         const response = await this.client.post('/payments/create-session', { success_url: successUrl, cancel_url: cancelUrl });
@@ -124,6 +133,12 @@ class ApiService {
 
     async getSubscriptionStatus() {
         const response = await this.client.get('/payments/status');
+        return response.data;
+    }
+
+    async testActivateSubscription() {
+        // Dev only: Activate subscription without Stripe webhook
+        const response = await this.client.post('/payments/test-activate');
         return response.data;
     }
 
@@ -140,6 +155,14 @@ class ApiService {
 
     async startCourse(courseId: string) {
         const response = await this.client.post(`/courses/${courseId}/start`);
+        return response.data;
+    }
+
+    async completeChapter(courseId: string, chapterId: string, moduleNumber: number) {
+        const response = await this.client.put(`/courses/${courseId}/complete-chapter`, {
+            chapter_id: chapterId,
+            module_number: moduleNumber
+        });
         return response.data;
     }
 

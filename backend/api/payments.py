@@ -65,3 +65,28 @@ async def get_subscription_status(current_user: dict = Depends(get_current_user)
     
     sub = await stripe_service.get_subscription(sub_id)
     return {"is_active": sub.get("status") == "active" if sub else False, "subscription": sub}
+
+
+@router.post("/test-activate")
+async def test_activate_subscription(current_user: dict = Depends(get_current_user)):
+    """
+    DEV ONLY: Manually activate subscription for testing.
+    This bypasses Stripe webhooks which don't work on localhost.
+    """
+    from config import settings
+    if settings.app_env != "development":
+        raise HTTPException(status_code=403, detail="Only available in development mode")
+    
+    db = get_database()
+    user_id = current_user["id"]
+    
+    # Activate user
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"is_paid": True, "subscription_status": "active"}}
+    )
+    
+    # Unlock all scans
+    await db.scans.update_many({"user_id": user_id}, {"$set": {"is_unlocked": True}})
+    
+    return {"status": "activated", "message": "Subscription activated for testing"}

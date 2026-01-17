@@ -1,19 +1,87 @@
 """
-Storage Service - S3 image storage
+Storage Service - S3 or local fallback for image storage
 """
 
-import boto3
-from botocore.exceptions import ClientError
+import os
 from typing import Optional
 import uuid
 from datetime import datetime
 from config import settings
 
 
-class StorageService:
-    """AWS S3 storage for scan images"""
+class LocalStorageService:
+    """Local file storage fallback for development/testing"""
     
     def __init__(self):
+        self.storage_dir = os.path.join(os.path.dirname(__file__), "..", "uploads")
+        os.makedirs(self.storage_dir, exist_ok=True)
+    
+    async def upload_image(
+        self,
+        image_data: bytes,
+        user_id: str,
+        image_type: str = "front"
+    ) -> Optional[str]:
+        """Save image to local filesystem"""
+        try:
+            # Create user directory
+            user_dir = os.path.join(self.storage_dir, user_id)
+            os.makedirs(user_dir, exist_ok=True)
+            
+            # Generate unique filename
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            filename = f"{timestamp}_{image_type}_{unique_id}.jpg"
+            filepath = os.path.join(user_dir, filename)
+            
+            # Write file
+            with open(filepath, "wb") as f:
+                f.write(image_data)
+            
+            # Return a local URL (relative path)
+            return f"/uploads/{user_id}/{filename}"
+            
+        except Exception as e:
+            print(f"Local storage error: {e}")
+            return None
+    
+    async def get_image(self, key: str) -> Optional[bytes]:
+        """Read image from local filesystem"""
+        try:
+            # Convert URL path to file path
+            filepath = os.path.join(self.storage_dir, key.replace("/uploads/", ""))
+            if os.path.exists(filepath):
+                with open(filepath, "rb") as f:
+                    return f.read()
+            return None
+        except Exception as e:
+            print(f"Local read error: {e}")
+            return None
+    
+    async def delete_image(self, key: str) -> bool:
+        """Delete image from local filesystem"""
+        try:
+            filepath = os.path.join(self.storage_dir, key.replace("/uploads/", ""))
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return True
+        except Exception as e:
+            print(f"Local delete error: {e}")
+            return False
+    
+    def get_presigned_url(self, key: str, expiration: int = 3600) -> Optional[str]:
+        """For local storage, just return the path"""
+        return key
+
+
+class S3StorageService:
+    """AWS S3 storage for production"""
+    
+    def __init__(self):
+        import boto3
+        from botocore.exceptions import ClientError
+        self.ClientError = ClientError
+        
         self.s3_client = boto3.client(
             "s3",
             aws_access_key_id=settings.aws_access_key_id,
@@ -26,19 +94,14 @@ class StorageService:
         self,
         image_data: bytes,
         user_id: str,
-        image_type: str = "front"  # front, left, right
+        image_type: str = "front"
     ) -> Optional[str]:
-        """
-        Upload an image to S3
-        Returns the URL of the uploaded image
-        """
+        """Upload an image to S3"""
         try:
-            # Generate unique key
             timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
             unique_id = str(uuid.uuid4())[:8]
             key = f"scans/{user_id}/{timestamp}_{image_type}_{unique_id}.jpg"
             
-            # Upload to S3
             self.s3_client.put_object(
                 Bucket=self.bucket,
                 Key=key,
@@ -46,11 +109,10 @@ class StorageService:
                 ContentType="image/jpeg"
             )
             
-            # Generate URL
             url = f"https://{self.bucket}.s3.{settings.aws_s3_region}.amazonaws.com/{key}"
             return url
             
-        except ClientError as e:
+        except self.ClientError as e:
             print(f"S3 upload error: {e}")
             return None
     
@@ -62,7 +124,7 @@ class StorageService:
                 Key=key
             )
             return response["Body"].read()
-        except ClientError as e:
+        except self.ClientError as e:
             print(f"S3 download error: {e}")
             return None
     
@@ -74,7 +136,7 @@ class StorageService:
                 Key=key
             )
             return True
-        except ClientError as e:
+        except self.ClientError as e:
             print(f"S3 delete error: {e}")
             return False
     
@@ -87,10 +149,28 @@ class StorageService:
                 ExpiresIn=expiration
             )
             return url
-        except ClientError as e:
+        except self.ClientError as e:
             print(f"Presigned URL error: {e}")
             return None
 
 
-# Singleton instance
-storage_service = StorageService()
+def create_storage_service():
+    """
+    Factory function to create appropriate storage service.
+    Uses S3 if AWS credentials are configured, otherwise falls back to local storage.
+    """
+    aws_key = settings.aws_access_key_id
+    aws_secret = settings.aws_secret_access_key
+    
+    # Check if AWS credentials are properly configured
+    if aws_key and aws_secret and aws_key != "your-aws-access-key":
+        print("✓ Using AWS S3 storage")
+        return S3StorageService()
+    else:
+        print("⚠ AWS not configured - using local file storage")
+        return LocalStorageService()
+
+
+# Singleton instance - automatically picks the right storage
+storage_service = create_storage_service()
+

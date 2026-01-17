@@ -8,7 +8,7 @@ from bson import ObjectId
 from db import get_database
 from middleware import get_current_user
 from middleware.auth_middleware import require_paid_user, get_current_admin_user
-from models.course import CourseCreate, CourseResponse, TaskCompletionRequest
+from models.course import CourseCreate, CourseResponse, ChapterCompletionRequest
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -26,7 +26,7 @@ async def list_courses(current_user: dict = Depends(require_paid_user)):
     return {"courses": courses}
 
 
-@router.get("/{course_id}")
+@router.get("/{course_id}", response_model=CourseResponse)
 async def get_course(course_id: str, current_user: dict = Depends(require_paid_user)):
     """Get course details"""
     db = get_database()
@@ -52,8 +52,9 @@ async def start_course(course_id: str, current_user: dict = Depends(require_paid
     progress = {
         "user_id": current_user["id"],
         "course_id": course_id,
-        "current_stage": 1,
-        "completed_tasks": [],
+        "course_title": course["title"], # Added title for easier display
+        "current_module": 1,
+        "completed_chapters": [],
         "progress_percentage": 0.0,
         "started_at": datetime.utcnow(),
         "last_activity": datetime.utcnow()
@@ -62,25 +63,35 @@ async def start_course(course_id: str, current_user: dict = Depends(require_paid
     return {"message": "Course started", "progress_id": str(result.inserted_id)}
 
 
-@router.put("/{course_id}/complete-task")
-async def complete_task(course_id: str, data: TaskCompletionRequest, current_user: dict = Depends(require_paid_user)):
-    """Mark task as complete"""
+@router.put("/{course_id}/complete-chapter")
+async def complete_chapter(course_id: str, data: ChapterCompletionRequest, current_user: dict = Depends(require_paid_user)):
+    """Mark chapter as complete"""
     db = get_database()
     progress = await db.user_course_progress.find_one({"user_id": current_user["id"], "course_id": course_id})
     if not progress:
         raise HTTPException(status_code=404, detail="Not enrolled in course")
     
-    completed = progress.get("completed_tasks", [])
-    if data.task_id not in completed:
-        completed.append(data.task_id)
+    completed = progress.get("completed_chapters", [])
+    if data.chapter_id not in completed:
+        completed.append(data.chapter_id)
     
     course = await db.courses.find_one({"_id": ObjectId(course_id)})
-    total_tasks = sum(len(s.get("tasks", [])) for s in course.get("stages", []))
-    percentage = (len(completed) / total_tasks * 100) if total_tasks > 0 else 0
+    
+    # Calculate progress
+    total_chapters = sum(len(m.get("chapters", [])) for m in course.get("modules", []))
+    percentage = (len(completed) / total_chapters * 100) if total_chapters > 0 else 0
+    
+    # Update current module logic (simple: max module touched or just logic based on percentage)
+    # For now, keep as is or update based on chapter's module
     
     await db.user_course_progress.update_one(
         {"_id": progress["_id"]},
-        {"$set": {"completed_tasks": completed, "progress_percentage": percentage, "last_activity": datetime.utcnow()}}
+        {"$set": {
+            "completed_chapters": completed, 
+            "progress_percentage": percentage, 
+            "last_activity": datetime.utcnow(),
+            "current_module": data.module_number # Update current module to the one just worked on
+        }}
     )
     return {"progress_percentage": percentage}
 

@@ -20,23 +20,36 @@ class CourseCategory(str, Enum):
     MINDSET = "mindset"
 
 
-class CourseTask(BaseModel):
-    """Individual task within a course stage"""
-    task_id: str
+class ChapterType(str, Enum):
+    """Content type for a chapter"""
+    TEXT = "text"
+    VIDEO = "video"
+    IMAGE = "image"
+    QUIZ = "quiz"
+
+
+class CourseChapter(BaseModel):
+    """Individual chapter within a course module"""
+    chapter_id: str
     title: str
     description: str
+    type: ChapterType = Field(default=ChapterType.TEXT)
+    content: Optional[str] = Field(default=None, description="Text content or markdown")
+    video_url: Optional[str] = Field(default=None, description="URL for video content")
+    image_url: Optional[str] = Field(default=None, description="URL for image content")
     duration_minutes: int = Field(default=10, ge=1)
-    video_url: Optional[str] = None
+    
+    # Legacy support (optional)
     instructions: List[str] = Field(default_factory=list)
     tips: List[str] = Field(default_factory=list)
 
 
-class CourseStage(BaseModel):
-    """Stage within a course"""
-    stage_number: int = Field(ge=1)
+class CourseModule(BaseModel):
+    """Module within a course (formerly Stage)"""
+    module_number: int = Field(ge=1)
     title: str
     description: str
-    tasks: List[CourseTask] = Field(default_factory=list)
+    chapters: List[CourseChapter] = Field(default_factory=list)
     unlock_after_days: int = Field(default=0, description="Days from start to unlock")
 
 
@@ -48,7 +61,7 @@ class CourseCreate(BaseModel):
     thumbnail_url: Optional[str] = None
     difficulty: str = Field(default="beginner")
     estimated_weeks: int = Field(default=4, ge=1)
-    stages: List[CourseStage] = Field(default_factory=list)
+    modules: List[CourseModule] = Field(default_factory=list)
 
 
 class CourseResponse(BaseModel):
@@ -60,8 +73,8 @@ class CourseResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     difficulty: str
     estimated_weeks: int
-    stages: List[CourseStage] = Field(default_factory=list)
-    total_tasks: int = 0
+    modules: List[CourseModule] = Field(default_factory=list)
+    total_chapters: int = 0
     is_active: bool = True
     created_at: datetime
     
@@ -77,7 +90,7 @@ class CourseInDB(BaseModel):
     thumbnail_url: Optional[str] = None
     difficulty: str = "beginner"
     estimated_weeks: int = 4
-    stages: List[CourseStage] = Field(default_factory=list)
+    modules: List[CourseModule] = Field(default_factory=list)
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -89,8 +102,8 @@ class CourseProgress(BaseModel):
     user_id: str
     course_id: str
     course_title: str
-    current_stage: int = 1
-    completed_tasks: List[str] = Field(default_factory=list)
+    current_module: int = 1
+    completed_chapters: List[str] = Field(default_factory=list)
     progress_percentage: float = Field(default=0.0, ge=0, le=100)
     started_at: datetime
     last_activity: datetime
@@ -104,15 +117,15 @@ class CourseProgressInDB(BaseModel):
     """Full progress model as stored in database"""
     user_id: str
     course_id: str
-    current_stage: int = 1
-    completed_tasks: List[str] = Field(default_factory=list)
+    current_module: int = 1
+    completed_chapters: List[str] = Field(default_factory=list)
     progress_percentage: float = 0.0
     started_at: datetime = Field(default_factory=datetime.utcnow)
     last_activity: datetime = Field(default_factory=datetime.utcnow)
     is_completed: bool = False
 
 
-class TaskCompletionRequest(BaseModel):
-    """Request to mark a task as complete"""
-    task_id: str
-    stage_number: int
+class ChapterCompletionRequest(BaseModel):
+    """Request to mark a chapter as complete"""
+    chapter_id: str
+    module_number: int

@@ -4,12 +4,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, typography } from '../../theme/dark';
 
 export default function ProfileScreen() {
+    const navigation = useNavigation<any>();
     const { user, logout } = useAuth();
     const [scans, setScans] = useState<any[]>([]);
     const [myRank, setMyRank] = useState<any>(null);
@@ -20,15 +22,21 @@ export default function ProfileScreen() {
 
     const loadData = async () => {
         try {
-            const [scanHistory, rank] = await Promise.all([
-                api.getScanHistory(),
-                api.getMyRank(),
-            ]);
+            // Load scan history - handle errors gracefully
+            const scanHistory = await api.getScanHistory().catch(() => ({ scans: [] }));
             setScans(scanHistory.scans || []);
+
+            // Load rank - handle errors gracefully
+            const rank = await api.getMyRank().catch(() => null);
             setMyRank(rank);
         } catch (error) {
             console.error(error);
         }
+    };
+
+    const safeNumber = (val: any, fallback: string = '?'): string => {
+        const num = parseFloat(val);
+        return isNaN(num) ? fallback : num.toFixed(1);
     };
 
     return (
@@ -43,7 +51,7 @@ export default function ProfileScreen() {
             {/* Stats Card */}
             <View style={styles.statsCard}>
                 <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{user?.profile?.current_level?.toFixed(1) || '?'}</Text>
+                    <Text style={styles.statValue}>{safeNumber(user?.profile?.current_level)}</Text>
                     <Text style={styles.statLabel}>Level</Text>
                 </View>
                 <View style={styles.divider} />
@@ -61,15 +69,22 @@ export default function ProfileScreen() {
             {/* Scan History */}
             <Text style={styles.sectionTitle}>Scan History</Text>
             <View style={styles.scanList}>
-                {scans.map((scan, i) => (
-                    <View key={i} style={styles.scanItem}>
+                {scans.length > 0 ? scans.map((scan, i) => (
+                    <TouchableOpacity
+                        key={i}
+                        style={styles.scanItem}
+                        onPress={() => navigation.navigate('ScanDetail', { scanId: scan.id })}
+                    >
                         <Ionicons name="scan" size={20} color={colors.primary} />
                         <View style={styles.scanInfo}>
                             <Text style={styles.scanDate}>{new Date(scan.created_at).toLocaleDateString()}</Text>
                         </View>
-                        <Text style={styles.scanScore}>{scan.overall_score?.toFixed(1) || '?'}</Text>
-                    </View>
-                ))}
+                        <Text style={styles.scanScore}>{safeNumber(scan.overall_score)}</Text>
+                        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                    </TouchableOpacity>
+                )) : (
+                    <Text style={styles.emptyText}>No scans yet. Start your first scan!</Text>
+                )}
             </View>
 
             {/* Logout */}
@@ -96,7 +111,8 @@ const styles = StyleSheet.create({
     scanItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
     scanInfo: { flex: 1, marginLeft: spacing.md },
     scanDate: { ...typography.bodySmall },
-    scanScore: { ...typography.h3, color: colors.primary },
+    scanScore: { ...typography.h3, color: colors.primary, marginRight: spacing.sm },
+    emptyText: { ...typography.bodySmall, color: colors.textMuted, textAlign: 'center', padding: spacing.lg },
     logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: spacing.xl, marginBottom: spacing.xxl, gap: spacing.sm },
     logoutText: { ...typography.body, color: colors.error },
 });

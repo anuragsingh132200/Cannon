@@ -24,8 +24,8 @@ from .payment import (
 from .course import (
     CourseCreate,
     CourseResponse,
-    CourseTask,
-    CourseStage,
+    CourseChapter,
+    CourseModule,
     CourseProgress
 )
 from .event import (

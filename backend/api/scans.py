@@ -68,13 +68,31 @@ async def analyze_scan(scan_id: str, current_user: dict = Depends(get_current_us
     await db.scans.update_one({"_id": ObjectId(scan_id)}, {"$set": {"processing_status": "processing"}})
     
     try:
-        import httpx
-        async with httpx.AsyncClient() as client:
-            front_resp = await client.get(scan["images"]["front"])
-            left_resp = await client.get(scan["images"]["left"])
-            right_resp = await client.get(scan["images"]["right"])
+        # Get image data - handle both local and S3 storage
+        front_url = scan["images"]["front"]
+        left_url = scan["images"]["left"]
+        right_url = scan["images"]["right"]
         
-        analysis = await face_scan_agent.analyze(front_resp.content, left_resp.content, right_resp.content)
+        if front_url.startswith("/uploads/"):
+            # Local storage - read files directly
+            front_data = await storage_service.get_image(front_url)
+            left_data = await storage_service.get_image(left_url)
+            right_data = await storage_service.get_image(right_url)
+        else:
+            # S3 storage - fetch via HTTP
+            import httpx
+            async with httpx.AsyncClient() as client:
+                front_resp = await client.get(front_url)
+                left_resp = await client.get(left_url)
+                right_resp = await client.get(right_url)
+            front_data = front_resp.content
+            left_data = left_resp.content
+            right_data = right_resp.content
+        
+        if not all([front_data, left_data, right_data]):
+            raise HTTPException(status_code=500, detail="Failed to retrieve images")
+        
+        analysis = await face_scan_agent.analyze(front_data, left_data, right_data)
         
         await db.scans.update_one(
             {"_id": ObjectId(scan_id)},
@@ -108,7 +126,9 @@ async def get_latest_scan(current_user: dict = Depends(get_current_user)):
         if is_paid:
             response["analysis"] = scan["analysis"]
         else:
-            response["analysis"] = {"overall_score": scan["analysis"].get("metrics", {}).get("overall_score"), "locked": True}
+            # For unpaid users, only show overall score
+            overall_score = scan["analysis"].get("overall_score") or scan["analysis"].get("metrics", {}).get("overall_score")
+            response["analysis"] = {"overall_score": overall_score, "locked": True}
     
     return response
 
@@ -120,3 +140,22 @@ async def get_scan_history(limit: int = 10, current_user: dict = Depends(require
     cursor = db.scans.find({"user_id": current_user["id"]}).sort("created_at", -1).limit(limit)
     scans = [{"id": str(s["_id"]), "created_at": s["created_at"], "overall_score": s.get("analysis", {}).get("metrics", {}).get("overall_score")} async for s in cursor]
     return {"scans": scans}
+
+
+@router.get("/{scan_id}")
+async def get_scan_by_id(scan_id: str, current_user: dict = Depends(require_paid_user)):
+    """Get a specific scan with full analysis (paid only)"""
+    db = get_database()
+    
+    scan = await db.scans.find_one({"_id": ObjectId(scan_id), "user_id": current_user["id"]})
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    
+    return {
+        "id": str(scan["_id"]),
+        "created_at": scan["created_at"],
+        "images": scan.get("images", {}),
+        "analysis": scan.get("analysis"),
+        "processing_status": scan.get("processing_status")
+    }
+
