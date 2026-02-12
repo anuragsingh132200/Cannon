@@ -4,10 +4,11 @@ Authentication API - Login, Signup, Token Management
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
 from bson import ObjectId
+import hashlib
 
 from config import settings
 from db import get_database
@@ -18,17 +19,22 @@ from models.user import (
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
-    """Hash a password"""
-    return pwd_context.hash(password)
+    """Hash a password with SHA-256 pre-hashing to support > 72 chars"""
+    pre_hash = hashlib.sha256(password.encode()).hexdigest().encode()
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pre_hash, salt)
+    return hashed.decode()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a password with SHA-256 pre-hashing"""
+    try:
+        pre_hash = hashlib.sha256(plain_password.encode()).hexdigest().encode()
+        return bcrypt.checkpw(pre_hash, hashed_password.encode())
+    except Exception:
+        return False
 
 
 def create_access_token(user_id: str) -> str:
