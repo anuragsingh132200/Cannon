@@ -21,6 +21,7 @@ interface User {
         streak_days: number;
     };
     first_scan_completed: boolean;
+    is_admin: boolean;
 }
 
 interface AuthContextType {

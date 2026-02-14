@@ -74,6 +74,7 @@ class UserResponse(BaseModel):
     onboarding: OnboardingData = Field(default_factory=OnboardingData)
     profile: UserProfile = Field(default_factory=UserProfile)
     first_scan_completed: bool = False
+    is_admin: bool = False
     
     class Config:
         from_attributes = True

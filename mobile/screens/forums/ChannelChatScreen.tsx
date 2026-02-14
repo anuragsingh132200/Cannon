@@ -29,7 +29,8 @@ export default function ChannelChatScreen() {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const route = useRoute<any>();
-    const { channelId, channelName, isAdminOnly } = route.params;
+    const { channelId, channelName } = route.params;
+    const [isAdminOnly, setIsAdminOnly] = useState(route.params.isAdminOnly || false);
     const { user } = useAuth();
 
     const [messages, setMessages] = useState<Message[]>([]);
@@ -43,8 +44,8 @@ export default function ChannelChatScreen() {
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const flatListRef = useRef<FlatList>(null);
 
-    const isAdmin = (user as any)?.is_admin || false;
-    const currentUserId = (user as any)?.id;
+    const isAdmin = user?.is_admin || false;
+    const currentUserId = user?.id;
 
     // Permission Logic: In admin-only channels, non-admins can ONLY reply
     const canPostTopLevel = !isAdminOnly || isAdmin;
@@ -61,6 +62,9 @@ export default function ChannelChatScreen() {
         try {
             const data = await api.getChannelMessages(channelId, 50, searchQuery);
             setMessages(data.messages || []);
+            if (data.is_admin_only !== undefined) {
+                setIsAdminOnly(data.is_admin_only);
+            }
         } catch (error) {
             console.error("Failed to load messages", error);
         } finally {
@@ -82,6 +86,10 @@ export default function ChannelChatScreen() {
 
     const handleSendMessage = async () => {
         if ((!messageText.trim() && !selectedImage) || sending) return;
+
+        // Guard: Only admins can post top-level in restricted channels
+        if (isAdminOnly && !isAdmin && !replyingTo) return;
+
         setSending(true);
         let attachmentUrl = undefined;
         let attachmentType = undefined;
@@ -253,7 +261,7 @@ export default function ChannelChatScreen() {
         return (
             <View style={styles.reactionsRow}>
                 {Object.entries(message.reactions).map(([emoji, userIds]) => {
-                    const hasReacted = userIds.includes(currentUserId);
+                    const hasReacted = currentUserId ? userIds.includes(currentUserId) : false;
                     return (
                         <TouchableOpacity
                             key={emoji}
