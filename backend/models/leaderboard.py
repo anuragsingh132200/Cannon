@@ -45,12 +45,16 @@ class ChatMessage(BaseModel):
     """Chat message for Cannon Chat"""
     role: str = Field(description="user or assistant")
     content: str
+    attachment_url: Optional[str] = None
+    attachment_type: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ChatRequest(BaseModel):
     """Request to send chat message"""
     message: str
+    attachment_url: Optional[str] = None
+    attachment_type: Optional[str] = None
 
 
 class ChatResponse(BaseModel):

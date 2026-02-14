@@ -44,6 +44,34 @@ class LocalStorageService:
         except Exception as e:
             print(f"Local storage error: {e}")
             return None
+
+    async def upload_video(
+        self,
+        video_data: bytes,
+        user_id: str
+    ) -> Optional[str]:
+        """Save video to local filesystem"""
+        try:
+            # Create user directory
+            user_dir = os.path.join(self.storage_dir, user_id)
+            os.makedirs(user_dir, exist_ok=True)
+            
+            # Generate unique filename
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            filename = f"{timestamp}_scan_{unique_id}.mp4"
+            filepath = os.path.join(user_dir, filename)
+            
+            # Write file
+            with open(filepath, "wb") as f:
+                f.write(video_data)
+            
+            # Return a local URL (relative path)
+            return f"/uploads/{user_id}/{filename}"
+            
+        except Exception as e:
+            print(f"Local video storage error: {e}")
+            return None
     
     async def get_image(self, key: str) -> Optional[bytes]:
         """Read image from local filesystem"""
@@ -114,6 +142,31 @@ class S3StorageService:
             
         except self.ClientError as e:
             print(f"S3 upload error: {e}")
+            return None
+
+    async def upload_video(
+        self,
+        video_data: bytes,
+        user_id: str
+    ) -> Optional[str]:
+        """Upload a video to S3"""
+        try:
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            key = f"scans/{user_id}/{timestamp}_scan_{unique_id}.mp4"
+            
+            self.s3_client.put_object(
+                Bucket=self.bucket,
+                Key=key,
+                Body=video_data,
+                ContentType="video/mp4"
+            )
+            
+            url = f"https://{self.bucket}.s3.{settings.aws_s3_region}.amazonaws.com/{key}"
+            return url
+            
+        except self.ClientError as e:
+            print(f"S3 video upload error: {e}")
             return None
     
     async def get_image(self, key: str) -> Optional[bytes]:

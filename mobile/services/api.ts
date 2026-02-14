@@ -43,6 +43,18 @@ class ApiService {
         );
     }
 
+    getBaseUrl() {
+        return API_BASE_URL;
+    }
+
+    resolveAttachmentUrl(url?: string) {
+        if (!url) return undefined;
+        if (url.startsWith('http')) return url;
+        // Construct base URL from API_BASE_URL (removing /api/)
+        const baseUrl = API_BASE_URL.replace('/api/', '');
+        return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
+    }
+
     private async getToken(): Promise<string | null> {
         if (this.accessToken) return this.accessToken;
         return await SecureStore.getItemAsync('access_token');
@@ -93,13 +105,16 @@ class ApiService {
     }
 
     // Scans
-    async uploadScanImages(front: any, left: any, right: any) {
+    async uploadScanVideo(videoUri: string) {
         const formData = new FormData();
-        formData.append('front', front);
-        formData.append('left', left);
-        formData.append('right', right);
+        // @ts-ignore
+        formData.append('video', {
+            uri: videoUri,
+            type: 'video/mp4',
+            name: 'scan.mp4',
+        });
 
-        const response = await this.client.post('scans/upload', formData, {
+        const response = await this.client.post('scans/upload-video', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
         return response.data;
@@ -188,8 +203,12 @@ class ApiService {
     }
 
     // Chat
-    async sendChatMessage(message: string) {
-        const response = await this.client.post('chat/message', { message });
+    async sendChatMessage(message: string, attachmentUrl?: string, attachmentType?: string) {
+        const response = await this.client.post('chat/message', {
+            message,
+            attachment_url: attachmentUrl,
+            attachment_type: attachmentType
+        });
         return response.data;
     }
 
@@ -199,18 +218,37 @@ class ApiService {
     }
 
     // Channels (Discord-like chat)
-    async getChannels() {
-        const response = await this.client.get('forums');
+    async getChannels(search?: string) {
+        const response = await this.client.get('forums', { params: { q: search } });
         return response.data;
     }
 
-    async getChannelMessages(channelId: string, limit: number = 50) {
-        const response = await this.client.get(`forums/${channelId}/messages`, { params: { limit } });
+    async getChannelMessages(channelId: string, limit: number = 50, query?: string) {
+        const response = await this.client.get(`forums/${channelId}/messages`, { params: { limit, query } });
         return response.data;
     }
 
-    async sendChannelMessage(channelId: string, content: string) {
-        const response = await this.client.post(`forums/${channelId}/messages`, { content });
+    async uploadChatFile(formData: FormData) {
+        const response = await this.client.post('forums/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    }
+
+    async sendChannelMessage(channelId: string, content: string, parentId?: string, attachmentUrl?: string, attachmentType?: string) {
+        const response = await this.client.post(`forums/${channelId}/messages`, {
+            content,
+            parent_id: parentId,
+            attachment_url: attachmentUrl,
+            attachment_type: attachmentType
+        });
+        return response.data;
+    }
+
+    async toggleReaction(channelId: string, messageId: string, emoji: string) {
+        const response = await this.client.post(`forums/${channelId}/messages/${messageId}/reactions`, null, {
+            params: { emoji }
+        });
         return response.data;
     }
 

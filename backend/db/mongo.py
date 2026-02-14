@@ -5,6 +5,7 @@ Uses Motor for async MongoDB operations
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typing import Optional
+import certifi
 from config import settings
 
 
@@ -18,7 +19,13 @@ class MongoDBClient:
     async def connect(cls) -> None:
         """Initialize MongoDB connection"""
         if cls._client is None:
-            cls._client = AsyncIOMotorClient(settings.mongodb_uri)
+            # Use certifi for SSL/TLS verification (common requirement on Windows)
+            # Added tlsAllowInvalidCertificates=True for diagnostics
+            cls._client = AsyncIOMotorClient(
+                settings.mongodb_uri,
+                tlsCAFile=certifi.where(),
+                tlsAllowInvalidCertificates=True
+            )
             cls._database = cls._client[settings.mongodb_database]
             
             # Create indexes

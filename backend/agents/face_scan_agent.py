@@ -34,6 +34,19 @@ class FaceScanAgent:
         """
         return await run_face_analysis_pipeline(front_image, left_image, right_image)
 
+    async def analyze_video(self, video_data: bytes) -> ScanAnalysis:
+        """
+        Analyze a face video by extracting frames and running analysis
+        
+        Args:
+            video_data: Video file bytes
+            
+        Returns:
+            ScanAnalysis with complete face metrics
+        """
+        from agents.langgraph_workflow import run_video_analysis_pipeline
+        return await run_video_analysis_pipeline(video_data)
+
 
 # Singleton instance
 face_scan_agent = FaceScanAgent()

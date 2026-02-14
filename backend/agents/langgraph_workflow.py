@@ -15,6 +15,10 @@ from models.scan import (
     ProfileMetrics, HairMetrics, BodyFatIndicators
 )
 import json
+import cv2
+import tempfile
+import os
+import numpy as np
 
 
 # Configure Gemini
@@ -307,6 +311,64 @@ async def run_face_analysis_pipeline(front_image: bytes, left_image: bytes, righ
         )
     except Exception as e:
         return create_fallback_analysis(str(e))
+
+
+def extract_frames_from_video(video_data: bytes) -> tuple[bytes, bytes, bytes]:
+    """Extract front, left, and right profile frames from video"""
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tf:
+        tf.write(video_data)
+        video_path = tf.name
+    
+    try:
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = total_frames / fps
+        
+        # Guide: Front (0s), Left (~4-5s), Back to Front (~8-10s), Right (~13-15s)
+        # We sample: Front (0.5s), Left (5s), Right (14s)
+        indices = [
+            int(0.5 * fps),    # Front
+            int(5.0 * fps),    # Left
+            int(14.0 * fps)    # Right
+        ]
+        
+        frames = []
+        for idx in indices:
+            # Clamp to video length
+            safe_idx = min(idx, total_frames - 1)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, safe_idx)
+            success, frame = cap.read()
+            if success:
+                # Convert to JPEG
+                _, buffer = cv2.imencode('.jpg', frame)
+                frames.append(buffer.tobytes())
+            else:
+                # Fallback to first frame if seek fails
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                _, frame = cap.read()
+                _, buffer = cv2.imencode('.jpg', frame)
+                frames.append(buffer.tobytes())
+        
+        # Ensure we have 3 frames
+        while len(frames) < 3:
+            frames.append(frames[-1] if frames else b"")
+            
+        return frames[0], frames[1], frames[2]
+        
+    finally:
+        cap.release()
+        if os.path.exists(video_path):
+            os.remove(video_path)
+
+
+async def run_video_analysis_pipeline(video_data: bytes) -> ScanAnalysis:
+    """Extract frames from video and run analysis pipeline"""
+    try:
+        front, left, right = extract_frames_from_video(video_data)
+        return await run_face_analysis_pipeline(front, left, right)
+    except Exception as e:
+        return create_fallback_analysis(f"Video extraction failed: {str(e)}")
 
 
 def build_face_metrics(data: dict) -> FaceMetrics:

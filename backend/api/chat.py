@@ -9,6 +9,7 @@ from db import get_database
 from middleware import get_current_user
 from middleware.auth_middleware import require_paid_user
 from services.gemini_service import gemini_service
+from services.storage_service import storage_service
 from models.leaderboard import ChatRequest, ChatResponse
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -28,12 +29,23 @@ async def send_message(data: ChatRequest, current_user: dict = Depends(require_p
     latest_scan = await db.scans.find_one({"user_id": user_id}, sort=[("created_at", -1)])
     user_context = {"latest_scan": latest_scan.get("analysis") if latest_scan else None}
     
+    # Get attachment data if it's an image
+    image_data = None
+    if data.attachment_url and data.attachment_type == "image":
+        image_data = await storage_service.get_image(data.attachment_url)
+    
     # Get response from Gemini
-    response_text = await gemini_service.chat(data.message, history, user_context)
+    response_text = await gemini_service.chat(data.message, history, user_context, image_data)
     
     # Save to history
     new_messages = history + [
-        {"role": "user", "content": data.message, "created_at": datetime.utcnow()},
+        {
+            "role": "user", 
+            "content": data.message, 
+            "attachment_url": data.attachment_url,
+            "attachment_type": data.attachment_type,
+            "created_at": datetime.utcnow()
+        },
         {"role": "assistant", "content": response_text, "created_at": datetime.utcnow()}
     ]
     

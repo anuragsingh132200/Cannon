@@ -101,7 +101,17 @@ async def get_current_progress(current_user: dict = Depends(require_paid_user)):
     """Get user's course progress"""
     db = get_database()
     cursor = db.user_course_progress.find({"user_id": current_user["id"]})
-    progress = [{"id": str(p["_id"]), "course_id": p["course_id"], "course_title": p.get("course_title", "Course"), "progress_percentage": p["progress_percentage"]} async for p in cursor]
+    progress = [
+        {
+            "id": str(p["_id"]), 
+            "course_id": p["course_id"], 
+            "course_title": p.get("course_title", "Course"), 
+            "progress_percentage": p["progress_percentage"],
+            "completed_chapters": p.get("completed_chapters", []),
+            "current_module": p.get("current_module", 1)
+        } 
+        async for p in cursor
+    ]
     return {"progress": progress}
 
 

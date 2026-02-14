@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     # JWT Authentication
     jwt_secret_key: str = Field(default="change-this-secret-key")
     jwt_algorithm: str = Field(default="HS256")
-    jwt_access_token_expire_minutes: int = Field(default=15)
-    jwt_refresh_token_expire_days: int = Field(default=7)
+    jwt_access_token_expire_minutes: int = Field(default=1440)  # 24 hours
+    jwt_refresh_token_expire_days: int = Field(default=300)      # ~10 months
     
     # Google Gemini
     gemini_api_key: str = Field(default="")

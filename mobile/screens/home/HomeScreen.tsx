@@ -14,7 +14,6 @@ import { colors, spacing, borderRadius, typography, shadows } from '../../theme/
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
-    const [events, setEvents] = useState<any[]>([]);
     const [progress, setProgress] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -26,11 +25,7 @@ export default function HomeScreen() {
 
     const loadData = async () => {
         try {
-            const [eventsRes, progressRes] = await Promise.all([
-                api.getEvents(),
-                api.getCourseProgress(),
-            ]);
-            setEvents(eventsRes.events || []);
+            const progressRes = await api.getCourseProgress();
             setProgress(progressRes.progress || []);
         } catch (error) {
             console.error(error);
@@ -66,26 +61,14 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
-                {/* Main Card - Live Events + Courses Combined */}
-                <View style={styles.mainCard}>
-                    {/* Live Events Section */}
-                    <TouchableOpacity
-                        style={styles.liveEventsHeader}
-                        activeOpacity={0.8}
-                    >
-                        <View style={styles.sectionTitleRow}>
-                            <View style={styles.sectionIconBox}>
-                                <Ionicons name="calendar" size={20} color={colors.primaryLight} />
-                            </View>
-                            <View>
-                                <Text style={styles.sectionTitle}>Live Events</Text>
-                                <Text style={styles.sectionSubtitle}>
-                                    {events.length > 0 ? `${events.length} events available` : 'No live events'}
-                                </Text>
-                            </View>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
-                    </TouchableOpacity>
+                {/* Main Card - Courses Only */}
+                <View style={[styles.mainCard, { marginTop: spacing.md }]}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>My Courses</Text>
+                        <Text style={styles.sectionSubtitle}>
+                            {progress.length} courses in progress
+                        </Text>
+                    </View>
 
                     {/* Course Progress Items */}
                     {progress.map((p, i) => (
@@ -148,68 +131,6 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Upcoming Events Card */}
-                <View style={styles.sectionCard}>
-                    <View style={styles.sectionCardHeader}>
-                        <Text style={styles.cardSectionTitle}>Upcoming Events</Text>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.4)" />
-                    </View>
-
-                    {events.length > 0 ? (
-                        events.slice(0, 3).map((event, i) => (
-                            <TouchableOpacity
-                                key={i}
-                                style={styles.eventListItem}
-                                onPress={() => openTikTok(event.tiktok_link)}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.eventListTitle} numberOfLines={1}>{event.title}</Text>
-                                <Text style={styles.eventListDate}>
-                                    {new Date(event.scheduled_at).toLocaleDateString()}
-                                </Text>
-                            </TouchableOpacity>
-                        ))
-                    ) : (
-                        <View style={styles.emptyStateSmall}>
-                            <Text style={styles.emptyStateText}>No upcoming events</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Quick Actions Card */}
-                <View style={styles.sectionCard}>
-                    <Text style={styles.cardSectionTitle}>Quick Actions</Text>
-
-                    <View style={styles.quickActionsRow}>
-                        <TouchableOpacity
-                            style={styles.quickActionButton}
-                            onPress={() => navigation.navigate('FaceScan')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="scan-outline" size={28} color={colors.primaryLight} />
-                            <Text style={styles.quickActionText}>New Scan</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.quickActionButton}
-                            onPress={() => navigation.navigate('Chat')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="chatbubble-outline" size={28} color={colors.primaryLight} />
-                            <Text style={styles.quickActionText}>AI Chat</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.quickActionButton}
-                            onPress={() => navigation.navigate('Rank')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="trophy-outline" size={28} color={colors.primaryLight} />
-                            <Text style={styles.quickActionText}>Rankings</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
             </ScrollView>
         </LinearGradient>
     );
@@ -270,28 +191,12 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
 
-    // Live Events Header
-    liveEventsHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
+    sectionHeader: {
         padding: spacing.md,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255,255,255,0.08)',
     },
-    sectionTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    sectionIconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(139, 92, 246, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+
     sectionTitle: {
         fontSize: 16,
         fontWeight: '600',
@@ -384,85 +289,6 @@ const styles = StyleSheet.create({
     addCourseText: {
         fontSize: 14,
         color: 'rgba(255,255,255,0.7)',
-        fontFamily: 'Matter-Medium',
-    },
-
-    // Section Cards (Upcoming Events, Quick Actions)
-    sectionCard: {
-        marginHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        borderRadius: borderRadius.xl,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.12)',
-        padding: spacing.md,
-    },
-    sectionCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing.sm,
-    },
-    cardSectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#FFFFFF',
-        fontFamily: 'Matter-Medium',
-    },
-
-    // Event List Items
-    eventListItem: {
-        backgroundColor: 'rgba(255,255,255,0.06)',
-        borderRadius: borderRadius.md,
-        padding: spacing.sm,
-        marginTop: spacing.xs,
-    },
-    eventListTitle: {
-        fontSize: 14,
-        color: '#FFFFFF',
-        fontWeight: '500',
-        marginBottom: 2,
-        fontFamily: 'Matter-Medium',
-    },
-    eventListDate: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.5)',
-        fontFamily: 'Matter-Regular',
-    },
-
-    // Empty State
-    emptyStateSmall: {
-        backgroundColor: 'rgba(255,255,255,0.06)',
-        borderRadius: borderRadius.md,
-        padding: spacing.md,
-        alignItems: 'center',
-    },
-    emptyStateText: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.5)',
-        fontFamily: 'Matter-Regular',
-    },
-
-    // Quick Actions
-    quickActionsRow: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-        marginTop: spacing.sm,
-    },
-    quickActionButton: {
-        flex: 1,
-        backgroundColor: 'rgba(255,255,255,0.06)',
-        borderRadius: borderRadius.lg,
-        paddingVertical: spacing.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    quickActionText: {
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.8)',
-        marginTop: spacing.sm,
         fontFamily: 'Matter-Medium',
     },
 });

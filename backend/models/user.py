@@ -108,3 +108,6 @@ class TokenPayload(BaseModel):
     sub: str  # user_id
     exp: datetime
     type: str  # access or refresh
+class TokenRefreshRequest(BaseModel):
+    """Request to refresh access token"""
+    refresh_token: str

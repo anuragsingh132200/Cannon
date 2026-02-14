@@ -78,9 +78,6 @@ export function RootNavigator() {
                     <Stack.Screen name="CourseList" component={CourseListScreen} />
                     <Stack.Screen name="CourseDetail" component={CourseDetailScreen} options={{ headerShown: false }} />
                     <Stack.Screen name="ChapterView" component={ChapterViewScreen} options={{ headerShown: false }} />
-
-                    {/* Channel Chat Screen */}
-                    <Stack.Screen name="ChannelChat" component={ChannelChatScreen} options={{ headerShown: false }} />
                 </>
             )}
         </Stack.Navigator>

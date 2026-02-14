@@ -14,34 +14,28 @@ from agents.face_scan_agent import face_scan_agent
 router = APIRouter(prefix="/scans", tags=["Face Scans"])
 
 
-@router.post("/upload")
-async def upload_scan_images(
-    front: UploadFile = File(...),
-    left: UploadFile = File(...),
-    right: UploadFile = File(...),
+@router.post("/upload-video")
+async def upload_scan_video(
+    video: UploadFile = File(...),
     current_user: dict = Depends(get_current_user)
 ):
-    """Upload 3 face scan images"""
+    """Upload a 15-second face scan video"""
     db = get_database()
     user_id = current_user["id"]
     
-    front_data = await front.read()
-    left_data = await left.read()
-    right_data = await right.read()
+    video_data = await video.read()
+    video_url = await storage_service.upload_video(video_data, user_id)
     
-    front_url = await storage_service.upload_image(front_data, user_id, "front")
-    left_url = await storage_service.upload_image(left_data, user_id, "left")
-    right_url = await storage_service.upload_image(right_data, user_id, "right")
-    
-    if not all([front_url, left_url, right_url]):
-        raise HTTPException(status_code=500, detail="Failed to upload images")
+    if not video_url:
+        raise HTTPException(status_code=500, detail="Failed to upload video")
     
     scan_doc = {
         "user_id": user_id,
         "created_at": datetime.utcnow(),
-        "images": {"front": front_url, "left": left_url, "right": right_url},
+        "video_url": video_url,
         "is_unlocked": current_user.get("is_paid", False),
-        "processing_status": "pending"
+        "processing_status": "pending",
+        "scan_type": "video"
     }
     
     result = await db.scans.insert_one(scan_doc)
@@ -53,12 +47,12 @@ async def upload_scan_images(
             {"$set": {"first_scan_completed": True}}
         )
     
-    return {"scan_id": scan_id, "images": scan_doc["images"]}
+    return {"scan_id": scan_id, "video_url": video_url}
 
 
 @router.post("/{scan_id}/analyze")
 async def analyze_scan(scan_id: str, current_user: dict = Depends(get_current_user)):
-    """Trigger AI analysis for uploaded scan"""
+    """Trigger AI analysis for uploaded scan (supports both image and video)"""
     db = get_database()
     
     scan = await db.scans.find_one({"_id": ObjectId(scan_id), "user_id": current_user["id"]})
@@ -68,31 +62,46 @@ async def analyze_scan(scan_id: str, current_user: dict = Depends(get_current_us
     await db.scans.update_one({"_id": ObjectId(scan_id)}, {"$set": {"processing_status": "processing"}})
     
     try:
-        # Get image data - handle both local and S3 storage
-        front_url = scan["images"]["front"]
-        left_url = scan["images"]["left"]
-        right_url = scan["images"]["right"]
-        
-        if front_url.startswith("/uploads/"):
-            # Local storage - read files directly
-            front_data = await storage_service.get_image(front_url)
-            left_data = await storage_service.get_image(left_url)
-            right_data = await storage_service.get_image(right_url)
+        # Handle video scan
+        if scan.get("scan_type") == "video":
+            video_url = scan["video_url"]
+            if video_url.startswith("/uploads/"):
+                video_data = await storage_service.get_image(video_url) # get_image works for any file
+            else:
+                import httpx
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(video_url)
+                    video_data = resp.content
+            
+            if not video_data:
+                raise HTTPException(status_code=500, detail="Failed to retrieve video data")
+            
+            # Pass video data to agent (it will handle frame extraction internally)
+            analysis = await face_scan_agent.analyze_video(video_data)
         else:
-            # S3 storage - fetch via HTTP
-            import httpx
-            async with httpx.AsyncClient() as client:
-                front_resp = await client.get(front_url)
-                left_resp = await client.get(left_url)
-                right_resp = await client.get(right_url)
-            front_data = front_resp.content
-            left_data = left_resp.content
-            right_data = right_resp.content
-        
-        if not all([front_data, left_data, right_data]):
-            raise HTTPException(status_code=500, detail="Failed to retrieve images")
-        
-        analysis = await face_scan_agent.analyze(front_data, left_data, right_data)
+            # Handle legacy image scan
+            front_url = scan["images"]["front"]
+            left_url = scan["images"]["left"]
+            right_url = scan["images"]["right"]
+            
+            if front_url.startswith("/uploads/"):
+                front_data = await storage_service.get_image(front_url)
+                left_data = await storage_service.get_image(left_url)
+                right_data = await storage_service.get_image(right_url)
+            else:
+                import httpx
+                async with httpx.AsyncClient() as client:
+                    front_resp = await client.get(front_url)
+                    left_resp = await client.get(left_url)
+                    right_resp = await client.get(right_url)
+                front_data = front_resp.content
+                left_data = left_resp.content
+                right_data = right_resp.content
+            
+            if not all([front_data, left_data, right_data]):
+                raise HTTPException(status_code=500, detail="Failed to retrieve images")
+            
+            analysis = await face_scan_agent.analyze(front_data, left_data, right_data)
         
         await db.scans.update_one(
             {"_id": ObjectId(scan_id)},

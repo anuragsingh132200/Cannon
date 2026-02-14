@@ -3,6 +3,7 @@ Gemini Service - LLM for chat and face analysis
 Uses Gemini 2.5 Flash with structured outputs
 """
 
+# TODO: Migrate to google-genai as google.generativeai is deprecated
 import google.generativeai as genai
 from typing import Optional, List
 from config import settings
@@ -376,11 +377,12 @@ class GeminiService:
         self,
         message: str,
         chat_history: List[dict],
-        user_context: Optional[dict] = None
+        user_context: Optional[dict] = None,
+        image_data: Optional[bytes] = None
     ) -> str:
         """
         Chat with Cannon persona
-        Uses conversation history for context
+        Uses conversation history for context, supports vision
         """
         # Build context from user data
         context_str = ""
@@ -402,19 +404,36 @@ class GeminiService:
             chat_prompt += f"\n\n## USER CONTEXT:{context_str}"
         
         # Format history
-        messages = [{"role": "user", "parts": [chat_prompt]}]
-        messages.append({"role": "model", "parts": ["Got it! I'm Cannon, ready to help you on your lookmaxxing journey. What's on your mind?"]})
+        history_for_gemini = []
         
-        for msg in chat_history[-10:]:  # Last 10 messages for context
+        # Add system instruction
+        # Note: GenerativeModel.start_chat doesn't support a separate system role easily in this SDK version
+        # We prepend it to the first message or use it as a preamble
+        
+        for msg in chat_history[-15:]:  # Last 15 messages for context
             role = "user" if msg["role"] == "user" else "model"
-            messages.append({"role": role, "parts": [msg["content"]]})
+            # Handle historical attachments if they were images (simplified to just text for history)
+            content = msg["content"]
+            history_for_gemini.append({"role": role, "parts": [content]})
+
+        # If history is empty, add the system prompt as a user message
+        if not history_for_gemini:
+            history_for_gemini.append({"role": "user", "parts": [chat_prompt]})
+            history_for_gemini.append({"role": "model", "parts": ["Yo! I'm Cannon. I've got your context. What's up?"]})
+        else:
+            # Inject system prompt into the first message of the session
+            history_for_gemini[0]["parts"][0] = f"{chat_prompt}\n\n{history_for_gemini[0]['parts'][0]}"
         
-        # Add new message
-        messages.append({"role": "user", "parts": [message]})
+        # Add new message (with image if provided)
+        new_message_parts = []
+        if image_data:
+            new_message_parts.append({"mime_type": "image/jpeg", "data": image_data})
+        
+        new_message_parts.append(message if message else "Look at this image.")
         
         # Generate response
-        chat = self.model.start_chat(history=messages[:-1])
-        response = chat.send_message(message)
+        chat = self.model.start_chat(history=history_for_gemini)
+        response = chat.send_message(new_message_parts)
         
         return response.text
 

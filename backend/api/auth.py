@@ -14,7 +14,7 @@ from config import settings
 from db import get_database
 from models.user import (
     UserCreate, UserLogin, UserResponse, UserInDB,
-    TokenResponse, OnboardingData, UserProfile
+    TokenResponse, OnboardingData, UserProfile, TokenRefreshRequest
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -161,14 +161,15 @@ async def login_json(user_data: UserLogin):
     )
 
 
+
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_token: str):
+async def refresh_token(request: TokenRefreshRequest):
     """
     Refresh access token using refresh token
     """
     try:
         payload = jwt.decode(
-            refresh_token,
+            request.refresh_token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm]
         )

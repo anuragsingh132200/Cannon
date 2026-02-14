@@ -5,7 +5,9 @@ Main application entry point
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import os
 
 from config import settings
 from db import mongo_client
@@ -52,6 +54,11 @@ app.include_router(events_router, prefix="/api")
 app.include_router(forums_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(leaderboard_router, prefix="/api")
+
+# Mount uploads directory
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
 @app.get("/")

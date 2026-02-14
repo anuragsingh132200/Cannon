@@ -47,6 +47,9 @@ class ChannelInDB(BaseModel):
 class MessageCreate(BaseModel):
     """Request to send a message in a channel"""
     content: str
+    parent_id: Optional[str] = None
+    attachment_url: Optional[str] = None
+    attachment_type: Optional[str] = None
 
 
 class MessageResponse(BaseModel):
@@ -56,8 +59,12 @@ class MessageResponse(BaseModel):
     user_id: str
     user_email: str
     content: str
+    attachment_url: Optional[str] = None
+    attachment_type: Optional[str] = None
     created_at: datetime
     is_admin: bool = False
+    parent_id: Optional[str] = None
+    reactions: dict = Field(default_factory=dict)
     
     class Config:
         from_attributes = True
@@ -68,6 +75,10 @@ class MessageInDB(BaseModel):
     channel_id: str
     user_id: str
     content: str
+    attachment_url: Optional[str] = None
+    attachment_type: Optional[str] = None
+    parent_id: Optional[str] = None
+    reactions: dict = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

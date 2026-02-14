@@ -9,14 +9,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../theme/dark';
 import { useNavigation } from '@react-navigation/native';
 
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 // Screens
 import HomeScreen from '../screens/home/HomeScreen';
 import CannonChatScreen from '../screens/chat/CannonChatScreen';
 import ForumsScreen from '../screens/forums/ForumsScreen';
+import ChannelChatScreen from '../screens/forums/ChannelChatScreen';
 import LeaderboardScreen from '../screens/leaderboard/LeaderboardScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+function ForumsStack() {
+    return (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="ForumsList" component={ForumsScreen} />
+            <Stack.Screen name="ChannelChat" component={ChannelChatScreen} />
+        </Stack.Navigator>
+    );
+}
 
 function ScanButton() {
     const navigation = useNavigation<any>();
@@ -32,11 +45,19 @@ function ScanButton() {
 }
 
 export default function TabNavigator() {
+    const insets = useSafeAreaInsets();
+
     return (
         <Tab.Navigator
             screenOptions={{
                 headerShown: false,
-                tabBarStyle: styles.tabBar,
+                tabBarStyle: [
+                    styles.tabBar,
+                    {
+                        height: 60 + insets.bottom,
+                        paddingBottom: insets.bottom,
+                    }
+                ],
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.textMuted,
                 tabBarLabelStyle: styles.tabLabel,
@@ -66,7 +87,7 @@ export default function TabNavigator() {
             />
             <Tab.Screen
                 name="Forums"
-                component={ForumsScreen}
+                component={ForumsStack}
                 options={{
                     tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
                 }}
@@ -87,8 +108,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface,
         borderTopColor: colors.border,
         borderTopWidth: 1,
-        height: 85,
-        paddingBottom: spacing.md,
+        // Height and paddingBottom are now dynamic based on safe area insets
         paddingTop: spacing.sm,
     },
     tabLabel: {
