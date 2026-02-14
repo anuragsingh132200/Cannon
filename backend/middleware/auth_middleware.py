@@ -84,8 +84,11 @@ async def get_optional_user(token: Optional[str] = Depends(oauth2_scheme)) -> Op
 
 async def require_paid_user(current_user: dict = Depends(get_current_user)) -> dict:
     """
-    Verify user has active subscription
+    Verify user has active subscription (admins are always allowed)
     """
+    if current_user.get("is_admin", False):
+        return current_user
+        
     if not current_user.get("is_paid", False):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,

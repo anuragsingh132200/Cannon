@@ -199,7 +199,8 @@ export default function ChannelChatScreen() {
                     ]}>
                         <View style={[
                             styles.bubble,
-                            isCurrentUser ? styles.userBubble : styles.otherBubble
+                            isCurrentUser ? styles.userBubble : styles.otherBubble,
+                            item.is_admin && styles.adminHighlight
                         ]}>
                             {showFullHeader && !isCurrentUser && (
                                 <View style={styles.nameRow}>
@@ -296,12 +297,12 @@ export default function ChannelChatScreen() {
             <KeyboardAvoidingView
                 style={styles.keyboardView}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
                 {/* Header */}
-                <View style={[styles.header, { paddingTop: insets.top }]}>
+                <View style={[styles.header, { paddingTop: insets.top + spacing.sm, paddingBottom: spacing.sm }]}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+                        <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
 
                     {!isSearching ? (
@@ -367,7 +368,7 @@ export default function ChannelChatScreen() {
 
                 {/* Input Area */}
                 {!isSearching && (isAdmin || !isAdminOnly || replyingTo) && (
-                    <View style={[styles.inputWrapper, { paddingBottom: spacing.sm }]}>
+                    <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
                         {replyingTo && (
                             <View style={styles.replyPreview}>
                                 <Text style={styles.replyPreviewText} numberOfLines={1}>
@@ -430,7 +431,6 @@ const styles = StyleSheet.create({
     center: { justifyContent: 'center', alignItems: 'center' },
     keyboardView: { flex: 1 },
     header: {
-        height: 100,
         backgroundColor: colors.surface,
         flexDirection: 'row',
         alignItems: 'center',
@@ -470,6 +470,11 @@ const styles = StyleSheet.create({
     otherBubble: {
         backgroundColor: colors.surface,
         borderTopLeftRadius: 2,
+    },
+    adminHighlight: {
+        borderWidth: 1.5,
+        borderColor: colors.warning,
+        backgroundColor: 'rgba(255, 179, 0, 0.1)',
     },
 
     replyContext: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },

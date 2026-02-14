@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import api from '../../services/api';
 import { colors, spacing, borderRadius, typography } from '../../theme/dark';
 
 export default function ForumManageScreen() {
+    const navigation = useNavigation<any>();
     const [channels, setChannels] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -23,6 +25,14 @@ export default function ForumManageScreen() {
         }
     };
 
+    const handleChannelPress = (item: any) => {
+        navigation.navigate('ChannelChat', {
+            channelId: item.id,
+            channelName: item.name,
+            isAdminOnly: item.is_admin_only
+        });
+    };
+
     const handleDelete = (id: string, name: string) => {
         Alert.alert(
             "Delete Channel",
@@ -35,7 +45,7 @@ export default function ForumManageScreen() {
     };
 
     const renderChannel = ({ item }: { item: any }) => (
-        <View style={styles.card}>
+        <TouchableOpacity style={styles.card} onPress={() => handleChannelPress(item)} activeOpacity={0.7}>
             <View style={styles.info}>
                 <Text style={styles.name}>#{item.name}</Text>
                 <Text style={styles.desc} numberOfLines={1}>{item.description}</Text>
@@ -51,7 +61,7 @@ export default function ForumManageScreen() {
                     <Ionicons name="trash-outline" size={20} color={colors.error} />
                 </TouchableOpacity>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 
     return (
