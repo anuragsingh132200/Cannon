@@ -162,12 +162,8 @@ async def seed_db():
     print("\nSeeding Leaderboard...")
     leaderboard_entries = [
         {
-            "user_id": user_ids[0], "score": 1250.0, "streak_days": 15, "scan_count": 5,
-            "rank": 1, "level": 8.5, "improvement_percentage": 25.0, "updated_at": datetime.utcnow()
-        },
-        {
             "user_id": user_ids[1], "score": 450.0, "streak_days": 3, "scan_count": 2,
-            "rank": 10, "level": 4.2, "improvement_percentage": 5.0, "updated_at": datetime.utcnow()
+            "rank": 1, "level": 4.2, "improvement_percentage": 5.0, "updated_at": datetime.utcnow()
         }
     ]
     await db.leaderboard.insert_many(leaderboard_entries)

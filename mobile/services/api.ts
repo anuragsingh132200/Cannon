@@ -267,6 +267,27 @@ class ApiService {
         const response = await this.client.get('leaderboard/me');
         return response.data;
     }
+
+    // Admin
+    async getAdminStats() {
+        const response = await this.client.get('admin/stats');
+        return response.data;
+    }
+
+    async getAdminUsers(query: string = '') {
+        const response = await this.client.get('admin/users', { params: { q: query } });
+        return response.data;
+    }
+
+    async sendAdminBroadcast(content: string) {
+        const response = await this.client.post('admin/broadcast', { content });
+        return response.data;
+    }
+
+    async sendAdminDirect(userId: string, content: string) {
+        const response = await this.client.post('admin/direct', { user_id: userId, content });
+        return response.data;
+    }
 }
 
 export const api = new ApiService();

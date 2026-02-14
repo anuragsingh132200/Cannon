@@ -13,7 +13,8 @@ from config import settings
 from db import mongo_client
 from api import (
     auth_router, users_router, scans_router, payments_router,
-    courses_router, events_router, forums_router, chat_router, leaderboard_router
+    courses_router, events_router, forums_router, chat_router, leaderboard_router,
+    admin_router
 )
 
 
@@ -54,6 +55,7 @@ app.include_router(events_router, prefix="/api")
 app.include_router(forums_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(leaderboard_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 
 # Mount uploads directory
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")

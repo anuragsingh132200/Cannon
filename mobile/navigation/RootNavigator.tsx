@@ -24,6 +24,7 @@ import CourseDetailScreen from '../screens/courses/CourseDetailScreen';
 import ChapterViewScreen from '../screens/courses/ChapterViewScreen';
 import ChannelChatScreen from '../screens/forums/ChannelChatScreen';
 import TabNavigator from './TabNavigator';
+import AdminNavigator from './AdminNavigator';
 
 const Stack = createNativeStackNavigator();
 
@@ -45,6 +46,11 @@ export function RootNavigator() {
                 <>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="Signup" component={SignupScreen} />
+                </>
+            ) : user?.is_admin ? (
+                // Admin Portal
+                <>
+                    <Stack.Screen name="Admin" component={AdminNavigator} />
                 </>
             ) : !user?.onboarding?.completed ? (
                 // Onboarding flow

@@ -30,7 +30,8 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
         subscription_end_date=current_user.get("subscription_end_date"),
         onboarding=OnboardingData(**current_user.get("onboarding", {})),
         profile=UserProfile(**current_user.get("profile", {})),
-        first_scan_completed=current_user.get("first_scan_completed", False)
+        first_scan_completed=current_user.get("first_scan_completed", False),
+        is_admin=current_user.get("is_admin", False)
     )
 
 

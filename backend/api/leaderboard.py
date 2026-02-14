@@ -21,6 +21,11 @@ async def get_leaderboard(limit: int = 100, current_user: dict = Depends(require
     entries = []
     async for entry in cursor:
         user = await db.users.find_one({"_id": ObjectId(entry["user_id"])}) if entry.get("user_id") else None
+        
+        # Skip if user is admin (safety check in case they somehow got an entry)
+        if user and user.get("is_admin"):
+            continue
+            
         entries.append({
             "rank": entry.get("rank", 0),
             "user_id": str(entry["user_id"]),
@@ -31,13 +36,16 @@ async def get_leaderboard(limit: int = 100, current_user: dict = Depends(require
             "improvement_percentage": entry.get("improvement_percentage", 0)
         })
     
-    total = await db.leaderboard.count_documents({})
+    total = len(entries) # Should ideally be count_documents excluding admins
     return {"entries": entries, "total_users": total}
 
 
 @router.get("/me")
 async def get_my_rank(current_user: dict = Depends(require_paid_user)):
     """Get current user's rank"""
+    if current_user.get("is_admin"):
+        return {"rank": None, "total_users": 0, "message": "Admins are excluded from leaderboard"}
+
     db = get_database()
     user_id = current_user["id"]
     entry = await db.leaderboard.find_one({"user_id": user_id})
