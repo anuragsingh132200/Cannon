@@ -1,20 +1,23 @@
 """
 Face Scan Agent
-High-level interface for face analysis
+Thin wrapper that delegates directly to the FacialAnalysisClient.
+No LangGraph, no Gemini — just HTTP calls to cannon_facial_analysis.
 """
 
-from typing import Optional
 from models.scan import ScanAnalysis
-from agents.langgraph_workflow import run_face_analysis_pipeline
+from services.facial_analysis_client import facial_analysis_client
 
 
 class FaceScanAgent:
-    """Agent for performing face scan analysis"""
-    
-    def __init__(self):
-        """Initialize the face scan agent"""
-        pass
-    
+    """Delegates face scan analysis to the cannon_facial_analysis microservice."""
+
+    async def analyze_video(self, video_data: bytes, filename: str = "scan.mp4") -> ScanAnalysis:
+        """
+        Upload a raw video to the cannon_facial_analysis service.
+        The service extracts frames, runs analysis, and returns results.
+        """
+        return await facial_analysis_client.upload_video(video_data, filename)
+
     async def analyze(
         self,
         front_image: bytes,
@@ -22,31 +25,11 @@ class FaceScanAgent:
         right_image: bytes
     ) -> ScanAnalysis:
         """
-        Analyze face images and return comprehensive results
-        
-        Args:
-            front_image: Front-facing photo bytes
-            left_image: Left profile photo bytes
-            right_image: Right profile photo bytes
-            
-        Returns:
-            ScanAnalysis with all metrics, improvements, and recommendations
+        Analyze three pre-extracted face images (front, left, right).
+        Sends them as base64 JSON frames to the analysis service.
         """
-        return await run_face_analysis_pipeline(front_image, left_image, right_image)
-
-    async def analyze_video(self, video_data: bytes) -> ScanAnalysis:
-        """
-        Analyze a face video by extracting frames and running analysis
-        
-        Args:
-            video_data: Video file bytes
-            
-        Returns:
-            ScanAnalysis with complete face metrics
-        """
-        from agents.langgraph_workflow import run_video_analysis_pipeline
-        return await run_video_analysis_pipeline(video_data)
+        return await facial_analysis_client.analyze_frames([front_image, left_image, right_image])
 
 
-# Singleton instance
+# Singleton
 face_scan_agent = FaceScanAgent()

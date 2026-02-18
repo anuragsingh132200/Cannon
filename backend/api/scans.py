@@ -1,7 +1,3 @@
-"""
-Face Scans API
-"""
-
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from datetime import datetime
 from bson import ObjectId
@@ -9,7 +5,7 @@ from db import get_database
 from middleware import get_current_user
 from middleware.auth_middleware import require_paid_user
 from services.storage_service import storage_service
-from agents.face_scan_agent import face_scan_agent
+from services.facial_analysis_client import facial_analysis_client
 
 router = APIRouter(prefix="/scans", tags=["Face Scans"])
 
@@ -76,8 +72,8 @@ async def analyze_scan(scan_id: str, current_user: dict = Depends(get_current_us
             if not video_data:
                 raise HTTPException(status_code=500, detail="Failed to retrieve video data")
             
-            # Pass video data to agent (it will handle frame extraction internally)
-            analysis = await face_scan_agent.analyze_video(video_data)
+            # Send video directly to cannon_facial_analysis service
+            analysis = await facial_analysis_client.upload_video(video_data)
         else:
             # Handle legacy image scan
             front_url = scan["images"]["front"]
@@ -101,7 +97,7 @@ async def analyze_scan(scan_id: str, current_user: dict = Depends(get_current_us
             if not all([front_data, left_data, right_data]):
                 raise HTTPException(status_code=500, detail="Failed to retrieve images")
             
-            analysis = await face_scan_agent.analyze(front_data, left_data, right_data)
+            analysis = await facial_analysis_client.analyze_frames([front_data, left_data, right_data])
         
         await db.scans.update_one(
             {"_id": ObjectId(scan_id)},
