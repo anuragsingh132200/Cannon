@@ -81,8 +81,8 @@ class ApiService {
     }
 
     // Auth
-    async signup(email: string, password: string) {
-        const response = await this.client.post('auth/signup', { email, password });
+    async signup(email: string, password: string, bio?: string) {
+        const response = await this.client.post('auth/signup', { email, password, bio });
         await this.setTokens(response.data.access_token, response.data.refresh_token);
         return response.data;
     }
@@ -95,6 +95,26 @@ class ApiService {
 
     async getMe() {
         const response = await this.client.get('users/me');
+        return response.data;
+    }
+
+    async uploadAvatar(imageUri: string) {
+        const formData = new FormData();
+        // @ts-ignore
+        formData.append('file', {
+            uri: imageUri,
+            name: 'avatar.jpg',
+            type: 'image/jpeg',
+        });
+
+        const response = await this.client.post('users/me/avatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    }
+
+    async updateProfile(data: any) {
+        const response = await this.client.put('users/profile', data);
         return response.data;
     }
 
@@ -286,6 +306,17 @@ class ApiService {
 
     async sendAdminDirect(userId: string, content: string) {
         const response = await this.client.post('admin/direct', { user_id: userId, content });
+        return response.data;
+    }
+
+    // Admin: Chat as Cannon for a specific user
+    async getAdminUserChat(userId: string) {
+        const response = await this.client.get(`admin/users/${userId}/chat`);
+        return response.data;
+    }
+
+    async sendAdminUserChat(userId: string, message: string) {
+        const response = await this.client.post(`admin/users/${userId}/chat`, { message });
         return response.data;
     }
 }

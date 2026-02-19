@@ -83,7 +83,8 @@ async def signup(user_data: UserCreate):
         is_paid=False,
         is_admin=False,
         onboarding=OnboardingData(),
-        profile=UserProfile(),
+
+        profile=UserProfile(bio=user_data.bio) if user_data.bio else UserProfile(),
         first_scan_completed=False
     )
     

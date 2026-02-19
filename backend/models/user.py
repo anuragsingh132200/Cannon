@@ -40,13 +40,18 @@ class UserProfile(BaseModel):
     rank: int = Field(default=0, ge=0)
     total_users: int = Field(default=0, ge=0)
     streak_days: int = Field(default=0, ge=0)
+    streak_days: int = Field(default=0, ge=0)
     improvement_percentage: float = Field(default=0.0)
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
 class UserCreate(BaseModel):
     """Schema for user registration"""
     email: EmailStr
+    email: EmailStr
     password: str = Field(min_length=8, max_length=100)
+    bio: Optional[str] = None
     
     class Config:
         json_schema_extra = {

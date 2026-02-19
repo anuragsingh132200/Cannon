@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { colors, spacing, borderRadius, typography } from '../../theme/dark';
 
-export default function UserManageScreen() {
+export default function UserManageScreen({ navigation }: any) {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -25,7 +25,11 @@ export default function UserManageScreen() {
     };
 
     const renderUser = ({ item }: { item: any }) => (
-        <View style={styles.userCard}>
+        <TouchableOpacity
+            style={styles.userCard}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('AdminUserChat', { userId: item.id, userEmail: item.email })}
+        >
             <View style={styles.userInfo}>
                 <Text style={styles.userEmail}>{item.email}</Text>
                 <View style={styles.tagRow}>
@@ -34,10 +38,10 @@ export default function UserManageScreen() {
                     <Text style={styles.dateText}>Joined {new Date(item.created_at).toLocaleDateString()}</Text>
                 </View>
             </View>
-            <TouchableOpacity style={styles.actionBtn}>
-                <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-        </View>
+            <View style={styles.actionBtn}>
+                <Ionicons name="chatbubble-outline" size={20} color={colors.primaryLight} />
+            </View>
+        </TouchableOpacity>
     );
 
     return (

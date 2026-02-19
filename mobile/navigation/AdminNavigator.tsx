@@ -11,6 +11,7 @@ import UserManageScreen from '../screens/admin/UserManageScreen';
 import ForumManageScreen from '../screens/admin/ForumManageScreen';
 import LeaderboardManageScreen from '../screens/admin/LeaderboardManageScreen';
 import AdminSupportScreen from '../screens/admin/AdminSupportScreen';
+import AdminUserChatScreen from '../screens/admin/AdminUserChatScreen';
 import ChannelChatScreen from '../screens/forums/ChannelChatScreen';
 
 const Drawer = createDrawerNavigator();
@@ -88,6 +89,14 @@ export default function AdminNavigator() {
                 component={AdminSupportScreen}
                 options={{
                     drawerIcon: ({ color }) => <Ionicons name="headset-outline" size={22} color={color} />
+                }}
+            />
+            <Drawer.Screen
+                name="AdminUserChat"
+                component={AdminUserChatScreen}
+                options={{
+                    drawerItemStyle: { display: 'none' },
+                    headerShown: false
                 }}
             />
             <Drawer.Screen

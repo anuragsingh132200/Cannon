@@ -19,6 +19,8 @@ interface User {
         current_level: number;
         rank: number;
         streak_days: number;
+        bio?: string;
+        avatar_url?: string;
     };
     first_scan_completed: boolean;
     is_admin: boolean;
@@ -30,7 +32,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isPaid: boolean;
     login: (email: string, password: string) => Promise<void>;
-    signup: (email: string, password: string) => Promise<void>;
+    signup: (email: string, password: string, bio?: string) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
 }
@@ -65,8 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
     };
 
-    const signup = async (email: string, password: string) => {
-        await api.signup(email, password);
+    const signup = async (email: string, password: string, bio?: string) => {
+        await api.signup(email, password, bio);
         const userData = await api.getMe();
         setUser(userData);
     };

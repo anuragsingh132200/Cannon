@@ -67,18 +67,27 @@ async def broadcast_message(
     """Send a message to ALL users in their Cannon AI chat"""
     db = get_database()
     
-    # In a real app, this would be a background task
-    # For now, we'll implement it as a sync broadcast
     cursor = db.users.find({}, {"_id": 1})
     count = 0
     async for user in cursor:
         user_id = str(user["_id"])
-        await db.chat_history.insert_one({
-            "user_id": user_id,
+        new_msg = {
             "role": "assistant",
             "content": f"[BROADCAST] {data.content}",
             "created_at": datetime.utcnow()
-        })
+        }
+        history_doc = await db.chat_history.find_one({"user_id": user_id, "messages": {"$exists": True}})
+        if history_doc:
+            await db.chat_history.update_one(
+                {"_id": history_doc["_id"]},
+                {"$push": {"messages": new_msg}, "$set": {"updated_at": datetime.utcnow()}}
+            )
+        else:
+            await db.chat_history.insert_one({
+                "user_id": user_id,
+                "messages": [new_msg],
+                "created_at": datetime.utcnow()
+            })
         count += 1
         
     return {"message": f"Broadcast sent to {count} users"}
@@ -95,12 +104,87 @@ async def direct_message(
     target = await db.users.find_one({"_id": ObjectId(data.user_id)})
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
-        
-    await db.chat_history.insert_one({
-        "user_id": data.user_id,
+    
+    new_msg = {
         "role": "assistant",
         "content": data.content,
         "created_at": datetime.utcnow()
-    })
+    }
+    
+    history_doc = await db.chat_history.find_one({"user_id": data.user_id, "messages": {"$exists": True}})
+    if history_doc:
+        await db.chat_history.update_one(
+            {"_id": history_doc["_id"]},
+            {"$push": {"messages": new_msg}, "$set": {"updated_at": datetime.utcnow()}}
+        )
+    else:
+        await db.chat_history.insert_one({
+            "user_id": data.user_id,
+            "messages": [new_msg],
+            "created_at": datetime.utcnow()
+        })
     
     return {"status": "Message sent"}
+
+
+# ----- Admin ↔ User Chat (as Cannon) -----
+
+class AdminChatMessage(BaseModel):
+    message: str
+
+@router.get("/users/{user_id}/chat")
+async def get_user_chat(
+    user_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    admin: dict = Depends(get_current_admin_user)
+):
+    """Get a user's Cannon chat history (admin only)"""
+    db = get_database()
+
+    # Verify user exists
+    target = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    history_doc = await db.chat_history.find_one({"user_id": user_id, "messages": {"$exists": True}})
+    messages = history_doc.get("messages", [])[-limit:] if history_doc else []
+    return {
+        "user_id": user_id,
+        "email": target.get("email", ""),
+        "messages": messages
+    }
+
+@router.post("/users/{user_id}/chat")
+async def send_user_chat(
+    user_id: str,
+    data: AdminChatMessage,
+    admin: dict = Depends(get_current_admin_user)
+):
+    """Send a message to a user's Cannon chat as the assistant (admin only)"""
+    db = get_database()
+
+    # Verify user exists
+    target = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_msg = {
+        "role": "assistant",
+        "content": data.message,
+        "created_at": datetime.utcnow()
+    }
+
+    history_doc = await db.chat_history.find_one({"user_id": user_id, "messages": {"$exists": True}})
+    if history_doc:
+        await db.chat_history.update_one(
+            {"_id": history_doc["_id"]},
+            {"$push": {"messages": new_msg}, "$set": {"updated_at": datetime.utcnow()}}
+        )
+    else:
+        await db.chat_history.insert_one({
+            "user_id": user_id,
+            "messages": [new_msg],
+            "created_at": datetime.utcnow()
+        })
+
+    return {"status": "Message sent", "message": new_msg}
