@@ -44,6 +44,55 @@ docker-compose up -d
 uvicorn main:app --reload
 ```
 
+Add a separate Face Analysis microservice and connect it to your main FastAPI backend.
+Clone Sarvagya Cannon Face Analysis
+Run it on port 8001
+Main backend calls it via HTTP
+Architecture:
+Copy code
+
+Mobile App
+    ↓
+Main Backend (8000)
+    ↓
+Face Analysis Service (8001)
+This keeps the system modular and scalable.
+Step 1 — Create Face Service Folder
+Inside your project root:
+Copy code
+
+/Cannon
+├── backend
+├── mobile
+├── admin
+└── face_service   ← new
+Step 2 — Clone Sarvagya Face Analysis
+Bash
+Copy code
+cd Cannon
+git clone <sarvagya-face-analysis-repo-url> face_service
+If it’s a private repo, use SSH or access token.
+Step 3 — Setup Environment
+Bash
+Copy code
+cd face_service
+
+python -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+
+pip install -r requirements.txt
+Step 4 — Run the Face Service
+Run exactly as required:
+Bash
+Copy code
+uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+Test:
+Open browser:
+Copy code
+
+http://localhost:8001/docs
+If Swagger opens → service is running.
+
 ### Mobile Setup
 
 ```bash
